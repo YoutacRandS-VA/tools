@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"strings"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -67,6 +68,9 @@ func Run(ctx context.Context, containerName, in, out string) (string, error) {
 	if err != nil {
 		return "", errors.Wrap(err, "could not create client")
 	}
+
+	// Sometimes the container's name contains `@` because of the package's version.
+	containerName = strings.ReplaceAll(containerName, "@", "_")
 
 	resp, err := cli.ContainerCreate(ctx,
 		&container.Config{
