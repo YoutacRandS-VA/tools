@@ -16,6 +16,7 @@ import (
 
 	"github.com/cdnjs/tools/audit"
 	"github.com/cdnjs/tools/gcp"
+	"github.com/cdnjs/tools/metrics"
 	"github.com/cdnjs/tools/packages"
 	"github.com/cdnjs/tools/sentry"
 	"github.com/pkg/errors"
@@ -46,6 +47,12 @@ func Invoke(ctx context.Context, e gcp.GCSEvent) error {
 	pkgName := e.Metadata["package"].(string)
 	version := e.Metadata["version"].(string)
 	log.Printf("Invoke %s %s\n", pkgName, version)
+
+	// This update is causing timeouts, ignore for now and sync storages later.
+	if pkgName == "cldr-json" && version == "srl295/random-v44" {
+		log.Printf("update is ignored\n")
+		return nil
+	}
 
 	configStr, err := b64.StdEncoding.DecodeString(e.Metadata["config"].(string))
 	if err != nil {
@@ -120,6 +127,9 @@ func Invoke(ctx context.Context, e gcp.GCSEvent) error {
 
 	if err := audit.WroteR2(ctx, pkgName, version, keys, FILE_EXTENSION); err != nil {
 		log.Printf("failed to audit: %s\n", err)
+	}
+	if err := metrics.NewUpdatePublishedR2(FILE_EXTENSION); err != nil {
+		return errors.Wrap(err, "could not report metrics")
 	}
 
 	return nil
